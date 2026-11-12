@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>블랙 조개 스탑워치</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% 20%,#1a1d24,#050506 70%);
+    color:#eee; font-family:"Segoe UI","Malgun Gothic",sans-serif; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:16px; gap:18px; }
+  .shell { position:relative; width:min(92vw,400px); }
+  svg { width:100%; display:block; filter:drop-shadow(0 20px 30px rgba(0,0,0,.8)); }
+  .time { position:absolute; left:0; right:0; top:46%; text-align:center; font-size:clamp(30px,9vw,44px);
+    font-weight:300; font-variant-numeric:tabular-nums; color:#e9eef5; text-shadow:0 0 14px rgba(160,200,255,.45); }
+  .time small { font-size:.55em; color:#8fa3bd; }
+  .btns { display:flex; gap:12px; width:min(92vw,400px); }
+  button { flex:1; padding:14px; font-size:16px; border:1px solid #2b2f38; border-radius:999px; cursor:pointer;
+    background:linear-gradient(#22252c,#101216); color:#ddd; font-family:inherit; }
+  button:hover { border-color:#6f8fb8; }
+  button:disabled { opacity:.35; cursor:default; }
+  #start { background:linear-gradient(#3b4a63,#1d2634); border-color:#6f8fb8; }
+  #start.running { background:linear-gradient(#5a2c34,#2b1318); border-color:#b8606c; }
+  ol { list-style:none; margin:0; padding:0; width:min(92vw,400px); max-height:180px; overflow-y:auto; }
+  li { display:flex; justify-content:space-between; padding:8px 12px; border-top:1px solid #20232a;
+    font-variant-numeric:tabular-nums; font-size:14px; }
+  li span:first-child { color:#7d8ba0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <svg viewBox="0 0 400 360" aria-hidden="true">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2c313b"/><stop offset="1" stop-color="#0a0b0e"/>
+      </linearGradient>
+    </defs>
+    <!-- 조개 몸통 (부채꼴 + 물결 가장자리) -->
+    <path id="body" fill="url(#g)" stroke="#3a404c" stroke-width="2"
+      d="M200 330 L25 150 Q15 110 45 85 Q70 55 100 62 Q125 20 165 28 Q200 5 235 28 Q275 20 300 62 Q330 55 355 85 Q385 110 375 150 Z"/>
+    <g id="ribs" stroke="#4a5262" stroke-width="1.6" fill="none" opacity=".8"></g>
+    <!-- 이음 부분 -->
+    <path d="M165 330 Q200 350 235 330 L225 308 Q200 318 175 308 Z" fill="#14161b" stroke="#3a404c" stroke-width="2"/>
+  </svg>
+  <div class="time" id="display">00:00:00<small>.00</small></div>
+</div>
+<div class="btns">
+  <button id="lap" disabled>랩</button>
+  <button id="start">시작</button>
+  <button id="reset" disabled>초기화</button>
+</div>
+<ol id="laps"></ol>
+<script>
+  // 조개 주름 생성
+  const ribs = document.getElementById('ribs');
+  for (let i = -8; i <= 8; i++) {
+    const a = (i / 8) * 62 * Math.PI / 180, L = 305;
+    const x = 200 + Math.sin(a) * L, y = 330 - Math.cos(a) * L * 0.98;
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', `M200 330 L${x.toFixed(1)} ${Math.max(y,30).toFixed(1)}`);
+    ribs.appendChild(p);
+  }
+  const $ = id => document.getElementById(id);
+  const display=$('display'), startBtn=$('start'), lapBtn=$('lap'), resetBtn=$('reset'), lapsEl=$('laps');
+  let elapsed=0, startTime=0, timer=null, lastLap=0, lapCount=0;
+  const pad=(n,l=2)=>String(n).padStart(l,'0');
+  const fmt=ms=>`${pad(Math.floor(ms/3600000))}:${pad(Math.floor(ms/60000)%60)}:${pad(Math.floor(ms/1000)%60)}<small>.${pad(Math.floor(ms/10)%100)}</small>`;
+  const plain=ms=>fmt(ms).replace(/<\/?small>/g,'');
+  const now=()=>elapsed+(timer?performance.now()-startTime:0);
+  const render=()=>display.innerHTML=fmt(now());
+  function toggle(){
+    if(timer){elapsed+=performance.now()-startTime;clearInterval(timer);timer=null;
+      startBtn.textContent='시작';startBtn.classList.remove('running');lapBtn.disabled=true;}
+    else{startTime=performance.now();timer=setInterval(render,30);
+      startBtn.textContent='정지';startBtn.classList.add('running');lapBtn.disabled=false;resetBtn.disabled=false;}
+    render();
+  }
+  function lap(){ if(!timer)return; const t=now(); lapCount++;
+    const li=document.createElement('li');
+    li.innerHTML=`<span>랩 ${lapCount}</span><span>+${plain(t-lastLap)}</span><span>${plain(t)}</span>`;
+    lapsEl.prepend(li); lastLap=t; }
+  function reset(){ clearInterval(timer);timer=null;elapsed=0;lastLap=0;lapCount=0;lapsEl.innerHTML='';
+    startBtn.textContent='시작';startBtn.classList.remove('running');lapBtn.disabled=true;resetBtn.disabled=true;render(); }
+  startBtn.onclick=toggle;lapBtn.onclick=lap;resetBtn.onclick=reset;
+  document.addEventListener('keydown',e=>{
+    if(e.code==='Space'){e.preventDefault();toggle();}
+    else if(e.key.toLowerCase()==='l')lap(); else if(e.key.toLowerCase()==='r')reset();
+  });
+</script>
+</body>
+</html>

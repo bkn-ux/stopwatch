@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>해녀 조개 스탑워치</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:#031a2b; color:#eaf6ff;
+    font-family:"Segoe UI","Malgun Gothic",sans-serif; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:16px; gap:16px; }
+  .scene { position:relative; width:min(92vw,400px); border-radius:24px; overflow:hidden;
+    box-shadow:0 18px 40px rgba(0,0,0,.6); }
+  svg { width:100%; display:block; }
+  .time { position:absolute; left:0; right:0; top:62%; text-align:center; font-size:clamp(26px,8vw,38px);
+    font-weight:500; font-variant-numeric:tabular-nums; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.75); }
+  .time small { font-size:.55em; opacity:.85; }
+  .bubble { fill:none; stroke:#bfe9ff; stroke-opacity:.7; animation:rise 6s linear infinite; }
+  @keyframes rise { from { transform:translateY(0); opacity:.9 } to { transform:translateY(-480px); opacity:0 } }
+  @media (prefers-reduced-motion: reduce) { .bubble { animation:none } }
+  .btns { display:flex; gap:12px; width:min(92vw,400px); }
+  button { flex:1; padding:14px; font-size:16px; border:1px solid #1c4a68; border-radius:999px; cursor:pointer;
+    background:linear-gradient(#124666,#082a40); color:#eaf6ff; font-family:inherit; }
+  button:hover { border-color:#6fc3f0; }
+  button:disabled { opacity:.35; cursor:default; }
+  #start { background:linear-gradient(#1f8fc4,#0f5f88); border-color:#6fc3f0; }
+  #start.running { background:linear-gradient(#c4503a,#7c2a1c); border-color:#f09a86; }
+  ol { list-style:none; margin:0; padding:0; width:min(92vw,400px); max-height:170px; overflow-y:auto; }
+  li { display:flex; justify-content:space-between; padding:8px 12px; border-top:1px solid #12384f;
+    font-variant-numeric:tabular-nums; font-size:14px; }
+  li span:first-child { color:#7fb4d4; }
+</style>
+</head>
+<body>
+<div class="scene">
+  <svg viewBox="0 0 400 520" aria-label="조개를 들고 있는 해녀">
+    <defs>
+      <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2d9fd0"/><stop offset=".5" stop-color="#0d5d8a"/><stop offset="1" stop-color="#041e33"/>
+      </linearGradient>
+      <linearGradient id="ray" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fff" stop-opacity=".25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <clipPath id="clip"><path id="body"
+        d="M200 330 L25 150 Q15 110 45 85 Q70 55 100 62 Q125 20 165 28 Q200 5 235 28 Q275 20 300 62 Q330 55 355 85 Q385 110 375 150 Z"/></clipPath>
+      <radialGradient id="shade" cx="200" cy="330" r="320" gradientUnits="userSpaceOnUse">
+        <stop offset=".2" stop-color="#000" stop-opacity=".5"/><stop offset=".6" stop-color="#000" stop-opacity=".12"/>
+        <stop offset="1" stop-color="#fff" stop-opacity=".12"/>
+      </radialGradient>
+    </defs>
+
+    <!-- 바다 배경 + 햇살 -->
+    <rect width="400" height="520" fill="url(#sea)"/>
+    <g fill="url(#ray)">
+      <polygon points="40,0 90,0 170,520 60,520"/><polygon points="170,0 215,0 330,520 240,520"/>
+      <polygon points="300,0 340,0 420,520 380,520"/>
+    </g>
+    <!-- 해초 -->
+    <g stroke="#1d7a56" stroke-width="7" stroke-linecap="round" fill="none">
+      <path d="M20 520 Q5 470 25 430 Q40 395 22 360"/><path d="M45 520 Q60 480 45 450"/>
+      <path d="M385 520 Q400 470 380 430 Q365 400 382 370"/>
+    </g>
+    <!-- 물방울 -->
+    <g>
+      <circle class="bubble" cx="110" cy="500" r="5" style="animation-delay:0s"/>
+      <circle class="bubble" cx="290" cy="510" r="7" style="animation-delay:1.8s"/>
+      <circle class="bubble" cx="240" cy="505" r="4" style="animation-delay:3.2s"/>
+      <circle class="bubble" cx="150" cy="515" r="6" style="animation-delay:4.4s"/>
+    </g>
+
+    <!-- 해녀: 몸통(검은 물옷) -->
+    <path d="M140 250 Q145 185 200 178 Q255 185 260 250 L270 300 L130 300 Z" fill="#121418"/>
+    <!-- 팔 (조개 양옆을 잡음) -->
+    <g stroke="#121418" stroke-width="26" stroke-linecap="round" fill="none">
+      <path d="M148 205 Q95 240 82 322"/><path d="M252 205 Q305 240 318 322"/>
+    </g>
+    <!-- 목, 머리 -->
+    <rect x="188" y="150" width="24" height="34" rx="10" fill="#e9b894"/>
+    <circle cx="200" cy="118" r="36" fill="#f1c4a0"/>
+    <!-- 흰 두건(수건) -->
+    <path d="M162 112 Q165 70 200 66 Q237 70 238 112 Q220 96 200 96 Q180 96 162 112 Z" fill="#f4f4ef"/>
+    <path d="M170 92 Q200 80 232 92" stroke="#cfd3cc" stroke-width="2" fill="none"/>
+    <!-- 물안경 (이마 위로 올림) -->
+    <rect x="171" y="94" width="58" height="17" rx="8" fill="#0d3347" stroke="#e8a24a" stroke-width="4"/>
+    <rect x="176" y="97" width="22" height="11" rx="5" fill="#7fd0f0" opacity=".85"/>
+    <rect x="202" y="97" width="22" height="11" rx="5" fill="#7fd0f0" opacity=".85"/>
+    <!-- 얼굴 -->
+    <circle cx="186" cy="128" r="2.6" fill="#2b1a12"/><circle cx="214" cy="128" r="2.6" fill="#2b1a12"/>
+    <path d="M190 142 Q200 150 210 142" stroke="#a5503f" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="177" cy="138" r="5" fill="#f0968a" opacity=".5"/><circle cx="223" cy="138" r="5" fill="#f0968a" opacity=".5"/>
+
+    <!-- 무지개 조개 (몸 앞쪽) -->
+    <g transform="translate(50 215) scale(.75)">
+      <g clip-path="url(#clip)">
+        <g id="wedges"></g>
+        <rect width="400" height="360" fill="url(#shade)"/>
+        <g id="ribs" stroke="rgba(0,0,0,.35)" stroke-width="1.6" fill="none"></g>
+      </g>
+      <use href="#body" fill="none" stroke="#fff" stroke-opacity=".65" stroke-width="3"/>
+      <path d="M165 330 Q200 350 235 330 L225 308 Q200 318 175 308 Z" fill="#2a2030" stroke="#fff" stroke-opacity=".5" stroke-width="2.5"/>
+    </g>
+
+    <!-- 손 (조개를 움켜쥔 모습) -->
+    <circle cx="80" cy="326" r="15" fill="#f1c4a0"/><circle cx="320" cy="326" r="15" fill="#f1c4a0"/>
+    <g stroke="#d9a47f" stroke-width="2" stroke-linecap="round">
+      <path d="M86 318 L96 322"/><path d="M87 326 L98 327"/><path d="M86 334 L96 332"/>
+      <path d="M314 318 L304 322"/><path d="M313 326 L302 327"/><path d="M314 334 L304 332"/>
+    </g>
+  </svg>
+  <div class="time" id="display">00:00:00<small>.00</small></div>
+</div>
+<div class="btns">
+  <button id="lap" disabled>랩</button>
+  <button id="start">시작</button>
+  <button id="reset" disabled>초기화</button>
+</div>
+<ol id="laps"></ol>
+<script>
+  // 무지개 조개 부챗살
+  const NS='http://www.w3.org/2000/svg', ribs=document.getElementById('ribs'), wedges=document.getElementById('wedges');
+  const N=14, SPAN=66*Math.PI/180, L=420;
+  const pt=i=>{const a=(i/N-.5)*2*SPAN;return `${(200+Math.sin(a)*L).toFixed(1)} ${(330-Math.cos(a)*L).toFixed(1)}`};
+  for(let i=0;i<N;i++){const w=document.createElementNS(NS,'path');
+    w.setAttribute('d',`M200 330 L${pt(i)} L${pt(i+1)} Z`);
+    w.setAttribute('fill',`hsl(${Math.round(i/(N-1)*280)} 90% 58%)`);wedges.appendChild(w);}
+  for(let i=0;i<=N;i++){const p=document.createElementNS(NS,'path');p.setAttribute('d',`M200 330 L${pt(i)}`);ribs.appendChild(p);}
+
+  // 스탑워치
+  const $=id=>document.getElementById(id);
+  const display=$('display'),startBtn=$('start'),lapBtn=$('lap'),resetBtn=$('reset'),lapsEl=$('laps');
+  let elapsed=0,startTime=0,timer=null,lastLap=0,lapCount=0;
+  const pad=(n,l=2)=>String(n).padStart(l,'0');
+  const fmt=ms=>`${pad(Math.floor(ms/3600000))}:${pad(Math.floor(ms/60000)%60)}:${pad(Math.floor(ms/1000)%60)}<small>.${pad(Math.floor(ms/10)%100)}</small>`;
+  const plain=ms=>fmt(ms).replace(/<\/?small>/g,'');
+  const now=()=>elapsed+(timer?performance.now()-startTime:0);
+  const render=()=>display.innerHTML=fmt(now());
+  function toggle(){
+    if(timer){elapsed+=performance.now()-startTime;clearInterval(timer);timer=null;
+      startBtn.textContent='시작';startBtn.classList.remove('running');lapBtn.disabled=true;}
+    else{startTime=performance.now();timer=setInterval(render,30);
+      startBtn.textContent='정지';startBtn.classList.add('running');lapBtn.disabled=false;resetBtn.disabled=false;}
+    render();
+  }
+  function lap(){if(!timer)return;const t=now();lapCount++;
+    const li=document.createElement('li');
+    li.innerHTML=`<span>랩 ${lapCount}</span><span>+${plain(t-lastLap)}</span><span>${plain(t)}</span>`;
+    lapsEl.prepend(li);lastLap=t;}
+  function reset(){clearInterval(timer);timer=null;elapsed=0;lastLap=0;lapCount=0;lapsEl.innerHTML='';
+    startBtn.textContent='시작';startBtn.classList.remove('running');lapBtn.disabled=true;resetBtn.disabled=true;render();}
+  startBtn.onclick=toggle;lapBtn.onclick=lap;resetBtn.onclick=reset;
+  document.addEventListener('keydown',e=>{
+    if(e.code==='Space'){e.preventDefault();toggle();}
+    else if(e.key.toLowerCase()==='l')lap(); else if(e.key.toLowerCase()==='r')reset();
+  });
+</script>
+</body>
+</html>

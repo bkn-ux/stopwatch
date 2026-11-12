@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>레드 실용 스탑워치</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:#fff5f5; color:#2a0f12; font-family:"Segoe UI","Malgun Gothic",sans-serif;
+    display:flex; justify-content:center; padding:16px; }
+  .app { width:100%; max-width:480px; }
+  .time { background:#c62828; color:#fff; border-radius:16px; padding:28px 12px; text-align:center;
+    font-size:clamp(44px,13vw,68px); font-weight:600; font-variant-numeric:tabular-nums; }
+  .time small { font-size:.5em; opacity:.8; }
+  .btns { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; margin:14px 0; }
+  button { padding:18px 8px; font-size:17px; font-weight:600; border:2px solid #c62828; border-radius:12px;
+    background:#fff; color:#c62828; cursor:pointer; font-family:inherit; }
+  button:hover { background:#ffe3e3; }
+  button:disabled { opacity:.35; cursor:default; }
+  #start { background:#c62828; color:#fff; }
+  #start.running { background:#fff; color:#c62828; }
+  .tools { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:14px; color:#7a4a4f; }
+  .tools button { padding:6px 12px; font-size:13px; border-radius:8px; border-width:1px; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th,td { padding:9px 6px; text-align:right; border-bottom:1px solid #f0cfcf; }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:#7a4a4f; font-weight:500; font-size:13px; }
+  .best { color:#1b8a3a; font-weight:700; } .worst { color:#c62828; font-weight:700; }
+  .scroll { max-height:300px; overflow-y:auto; }
+  .hint { text-align:center; font-size:12px; color:#a88; margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="time" id="display">00:00:00<small>.00</small></div>
+  <div class="btns">
+    <button id="start">시작</button>
+    <button id="lap" disabled>랩</button>
+    <button id="reset" disabled>초기화</button>
+  </div>
+  <div class="tools">
+    <span id="summary">구간 기록 없음</span>
+    <button id="copy" disabled>기록 복사</button>
+  </div>
+  <div class="scroll">
+    <table><thead><tr><th>#</th><th>구간</th><th>누적</th></tr></thead><tbody id="laps"></tbody></table>
+  </div>
+  <div class="hint">스페이스 시작/정지 · L 랩 · R 초기화 · 탭을 닫아도 시간 유지</div>
+</div>
+<script>
+  const $=id=>document.getElementById(id);
+  const display=$('display'),startBtn=$('start'),lapBtn=$('lap'),resetBtn=$('reset'),copyBtn=$('copy'),lapsEl=$('laps'),summary=$('summary');
+  const KEY='stopwatch-red';
+  // 상태: 실제 시계(Date.now) 기반이라 탭이 백그라운드여도 정확하고 새로고침해도 복원됨
+  let s={running:false,base:0,since:0,laps:[]}, raf=null;
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
+  try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.laps))s=v}catch(e){}
+  const pad=(n,l=2)=>String(n).padStart(l,'0');
+  const txt=ms=>`${pad(Math.floor(ms/3600000))}:${pad(Math.floor(ms/60000)%60)}:${pad(Math.floor(ms/1000)%60)}.${pad(Math.floor(ms/10)%100)}`;
+  const now=()=>s.base+(s.running?Date.now()-s.since:0);
+  function tick(){display.innerHTML=txt(now()).replace(/\.(\d\d)$/,'<small>.$1</small>');
+    document.title=(s.running?'▶ ':'')+txt(now()).slice(0,8);
+    if(s.running)raf=requestAnimationFrame(tick);}
+  function drawLaps(){
+    const splits=s.laps.map((t,i)=>t-(s.laps[i-1]||0));
+    const min=Math.min(...splits),max=Math.max(...splits);
+    lapsEl.innerHTML=s.laps.map((t,i)=>{
+      const c=s.laps.length>1?(splits[i]===min?'best':splits[i]===max?'worst':''):'';
+      return `<tr class="${c}"><td>${i+1}</td><td>${txt(splits[i])}</td><td>${txt(t)}</td></tr>`;}).reverse().join('');
+    summary.textContent=s.laps.length?`${s.laps.length}구간 · 평균 ${txt(s.laps[s.laps.length-1]/s.laps.length)}`:'구간 기록 없음';
+    copyBtn.disabled=!s.laps.length;
+  }
+  function ui(){
+    startBtn.textContent=s.running?'정지':'시작';startBtn.classList.toggle('running',s.running);
+    lapBtn.disabled=!s.running;resetBtn.disabled=!s.running&&now()===0;
+    cancelAnimationFrame(raf);tick();drawLaps();save();
+  }
+  function toggle(){ if(s.running){s.base=now();s.running=false;}else{s.since=Date.now();s.running=true;} ui(); }
+  function lap(){ if(!s.running)return; s.laps.push(now()); ui(); }
+  function reset(){ s={running:false,base:0,since:0,laps:[]}; ui(); }
+  copyBtn.onclick=async()=>{
+    const splits=s.laps.map((t,i)=>t-(s.laps[i-1]||0));
+    const out=s.laps.map((t,i)=>`${i+1}\t${txt(splits[i])}\t${txt(t)}`).join('\n');
+    try{await navigator.clipboard.writeText(out);copyBtn.textContent='복사됨 ✓'}catch(e){copyBtn.textContent='복사 실패'}
+    setTimeout(()=>copyBtn.textContent='기록 복사',1500);
+  };
+  startBtn.onclick=toggle;lapBtn.onclick=lap;resetBtn.onclick=reset;
+  document.addEventListener('keydown',e=>{
+    if(e.code==='Space'){e.preventDefault();toggle();}
+    else if(e.key.toLowerCase()==='l')lap(); else if(e.key.toLowerCase()==='r')reset();
+  });
+  ui();
+</script>
+</body>
+</html>

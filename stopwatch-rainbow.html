@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무지개 조개 스탑워치</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:radial-gradient(circle at 50% 20%,#1a1d24,#050506 70%);
+    color:#eee; font-family:"Segoe UI","Malgun Gothic",sans-serif; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:16px; gap:18px; }
+  .shell { position:relative; width:min(92vw,400px); }
+  svg { width:100%; display:block; filter:drop-shadow(0 20px 30px rgba(0,0,0,.8)); }
+  .time { position:absolute; left:0; right:0; top:46%; text-align:center; font-size:clamp(30px,9vw,44px);
+    font-weight:300; font-variant-numeric:tabular-nums; color:#fff; font-weight:500; text-shadow:0 2px 8px rgba(0,0,0,.7); }
+  .time small { font-size:.55em; color:#fff; opacity:.85; }
+  .btns { display:flex; gap:12px; width:min(92vw,400px); }
+  button { flex:1; padding:14px; font-size:16px; border:1px solid #2b2f38; border-radius:999px; cursor:pointer;
+    background:linear-gradient(#22252c,#101216); color:#ddd; font-family:inherit; }
+  button:hover { border-color:#6f8fb8; }
+  button:disabled { opacity:.35; cursor:default; }
+  #start { background:linear-gradient(#3b4a63,#1d2634); border-color:#6f8fb8; }
+  #start.running { background:linear-gradient(#5a2c34,#2b1318); border-color:#b8606c; }
+  ol { list-style:none; margin:0; padding:0; width:min(92vw,400px); max-height:180px; overflow-y:auto; }
+  li { display:flex; justify-content:space-between; padding:8px 12px; border-top:1px solid #20232a;
+    font-variant-numeric:tabular-nums; font-size:14px; }
+  li span:first-child { color:#7d8ba0; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <svg viewBox="0 0 400 360" aria-hidden="true">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2c313b"/><stop offset="1" stop-color="#0a0b0e"/>
+      </linearGradient>
+    </defs>
+    <!-- 조개 몸통 (부채꼴 + 물결 가장자리) -->
+    <clipPath id="clip"><path id="body"
+      d="M200 330 L25 150 Q15 110 45 85 Q70 55 100 62 Q125 20 165 28 Q200 5 235 28 Q275 20 300 62 Q330 55 355 85 Q385 110 375 150 Z"/></clipPath>
+    <radialGradient id="shade" cx="200" cy="330" r="320" gradientUnits="userSpaceOnUse">
+      <stop offset=".2" stop-color="#000" stop-opacity=".55"/><stop offset=".6" stop-color="#000" stop-opacity=".15"/>
+      <stop offset="1" stop-color="#fff" stop-opacity=".12"/>
+    </radialGradient>
+    <g clip-path="url(#clip)">
+      <g id="wedges"></g>
+      <rect width="400" height="360" fill="url(#shade)"/>
+      <g id="ribs" stroke="rgba(0,0,0,.35)" stroke-width="1.6" fill="none"></g>
+    </g>
+    <use href="#body" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.5"/>
+    <!-- 이음 부분 -->
+    <path d="M165 330 Q200 350 235 330 L225 308 Q200 318 175 308 Z" fill="#2a2030" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
+  </svg>
+  <div class="time" id="display">00:00:00<small>.00</small></div>
+</div>
+<div class="btns">
+  <button id="lap" disabled>랩</button>
+  <button id="start">시작</button>
+  <button id="reset" disabled>초기화</button>
+</div>
+<ol id="laps"></ol>
+<script>
+  // 조개 주름 생성
+  const NS = 'http://www.w3.org/2000/svg', ribs = document.getElementById('ribs'), wedges = document.getElementById('wedges');
+  const N = 14, SPAN = 66 * Math.PI / 180, L = 420;
+  const pt = i => { const a = (i / N - .5) * 2 * SPAN; return `${(200 + Math.sin(a) * L).toFixed(1)} ${(330 - Math.cos(a) * L).toFixed(1)}`; };
+  for (let i = 0; i < N; i++) {           // 빨강→보라 무지개 부채살
+    const w = document.createElementNS(NS, 'path');
+    w.setAttribute('d', `M200 330 L${pt(i)} L${pt(i + 1)} Z`);
+    w.setAttribute('fill', `hsl(${Math.round(i / (N - 1) * 280)} 90% 58%)`);
+    wedges.appendChild(w);
+  }
+  for (let i = 0; i <= N; i++) {
+    const p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', `M200 330 L${pt(i)}`);
+    ribs.appendChild(p);
+  }
+  const $ = id => document.getElementById(id);
+  const display=$('display'), startBtn=$('start'), lapBtn=$('lap'), resetBtn=$('reset'), lapsEl=$('laps');
+  let elapsed=0, startTime=0, timer=null, lastLap=0, lapCount=0;
+  const pad=(n,l=2)=>String(n).padStart(l,'0');
+  const fmt=ms=>`${pad(Math.floor(ms/3600000))}:${pad(Math.floor(ms/60000)%60)}:${pad(Math.floor(ms/1000)%60)}<small>.${pad(Math.floor(ms/10)%100)}</small>`;
+  const plain=ms=>fmt(ms).replace(/<\/?small>/g,'');
+  const now=()=>elapsed+(timer?performance.now()-startTime:0);
+  const render=()=>display.innerHTML=fmt(now());
+  function toggle(){
+    if(timer){elapsed+=performance.now()-startTime;clearInterval(timer);timer=null;
+      startBtn.textContent='시작';startBtn.classList.remove('running');lapBtn.disabled=true;}
+    else{startTime=performance.now();timer=setInterval(render,30);
+      startBtn.textContent='정지';startBtn.classList.add('running');lapBtn.disabled=false;resetBtn.disabled=false;}
+    render();
+  }
+  function lap(){ if(!timer)return; const t=now(); lapCount++;
+    const li=document.createElement('li');
+    li.innerHTML=`<span>랩 ${lapCount}</span><span>+${plain(t-lastLap)}</span><span>${plain(t)}</span>`;
+    lapsEl.prepend(li); lastLap=t; }
+  function reset(){ clearInterval(timer);timer=null;elapsed=0;lastLap=0;lapCount=0;lapsEl.innerHTML='';
+    startBtn.textContent='시작';startBtn.classList.remove('running');lapBtn.disabled=true;resetBtn.disabled=true;render(); }
+  startBtn.onclick=toggle;lapBtn.onclick=lap;resetBtn.onclick=reset;
+  document.addEventListener('keydown',e=>{
+    if(e.code==='Space'){e.preventDefault();toggle();}
+    else if(e.key.toLowerCase()==='l')lap(); else if(e.key.toLowerCase()==='r')reset();
+  });
+</script>
+</body>
+</html>
