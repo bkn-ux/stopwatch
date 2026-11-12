@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>골드 해녀 조개 타임워치</title>
+<style>
+  :root {
+    --page:#140e03; --text:#fff6dd; --muted:#c7ae74; --glow:rgba(242,183,5,.35); --card-border:#8a6614; --panel:#1f1506; --line:#3d2a08;
+    --sea1:#f8da7c; --sea2:#b7811a; --sea3:#2a1b04; --ray:rgba(255,246,205,.40);
+    --suit:#120d07; --suit-rim:#f2c94c; --scarf:#fffbe9; --rim:#ffd96a;
+    --accent:#f2b705; --accent-text:#2a1c00; --stop:#e4572e; --stop-text:#fff;
+    --btn-bg:#2a1d06; --btn-border:#7a5a12; --btn-text:#fff6dd;
+    --weed:#6f9a1e; --coral1:#ff9f1c; --coral2:#c2410c; --fish1:#e8590c; --fish2:#fff3c4; --jelly:#ffeaa8; --life:block; --glit:block;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--page); color:var(--text);
+    font-family:"Segoe UI","Malgun Gothic",sans-serif; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; padding:16px; gap:14px; }
+  .wrap { width:min(94vw,420px,calc((100vh - 260px) * .74)); min-width:290px; display:flex; flex-direction:column; gap:14px; }
+  .scene { position:relative; container-type:inline-size; border-radius:26px; overflow:hidden; border:1px solid var(--card-border);
+    box-shadow:0 18px 44px rgba(0,0,0,.45), 0 0 40px var(--glow); }
+  svg { width:100%; display:block; }
+  .badge { position:absolute; top:12px; left:12px; padding:5px 12px 5px 22px; font-size:12px; letter-spacing:.06em;
+    border-radius:999px; background:rgba(0,0,0,.38); color:#fff; backdrop-filter:blur(4px); }
+  .badge::before { content:""; position:absolute; left:9px; top:50%; width:8px; height:8px; margin-top:-4px; border-radius:50%; background:#9aa4b2; }
+  .scene.running .badge::before { background:#3ddc84; animation:blink 1s infinite; }
+  .scene.paused .badge::before { background:#ffb020; }
+  @keyframes blink { 50% { opacity:.25 } }
+  .time { position:absolute; left:0; right:0; top:55.2%; text-align:center; font-size:clamp(22px,8.2cqw,36px);
+    font-weight:600; font-variant-numeric:tabular-nums; color:#fff; letter-spacing:.5px;
+    text-shadow:0 2px 3px rgba(0,0,0,.65), 0 0 14px rgba(0,0,0,.45); pointer-events:none; }
+  .time small { font-size:.55em; opacity:.9; }
+
+  /* 장면 애니메이션 */
+  .fauna { display:var(--life); } .glit { display:var(--glit); }
+  .swimR { animation:swimR 19s linear infinite; } .swimL { animation:swimL 26s linear infinite; }
+  @keyframes swimR { from { transform:translateX(-90px) } to { transform:translateX(500px) } }
+  @keyframes swimL { from { transform:translateX(500px) } to { transform:translateX(-90px) } }
+  .tail { transform-box:fill-box; transform-origin:right center; animation:wag .5s ease-in-out infinite alternate; }
+  @keyframes wag { from { transform:scaleX(.85) skewY(-6deg) } to { transform:scaleX(1.05) skewY(6deg) } }
+  .jelly { animation:bob 7s ease-in-out infinite alternate; }
+  @keyframes bob { from { transform:translateY(10px) } to { transform:translateY(-26px) } }
+  .weed { transform-box:fill-box; transform-origin:bottom center; animation:sway 4.2s ease-in-out infinite alternate; }
+  @keyframes sway { from { transform:rotate(-5deg) } to { transform:rotate(5deg) } }
+  .bubble { fill:rgba(255,255,255,.12); stroke:#fff; stroke-opacity:.65; animation:rise 7s linear infinite; }
+  @keyframes rise { from { transform:translateY(0); opacity:.9 } to { transform:translateY(-560px); opacity:0 } }
+  .rays { animation:rays 8s ease-in-out infinite alternate; }
+  @keyframes rays { from { opacity:.55 } to { opacity:1 } }
+  .twinkle { transform-box:fill-box; transform-origin:center; animation:tw 2.4s ease-in-out infinite; }
+  @keyframes tw { 0%,100% { transform:scale(0); opacity:0 } 50% { transform:scale(1); opacity:1 } }
+  .blink { transform-box:fill-box; transform-origin:center; animation:eye 4.5s infinite; }
+  @keyframes eye { 0%,92%,100% { transform:scaleY(1) } 95% { transform:scaleY(.1) } }
+  .diver { transform-box:fill-box; transform-origin:center; }
+  .scene.running .diver { animation:dive 1.6s ease-in-out infinite alternate; }
+  @keyframes dive { from { transform:translateY(0) } to { transform:translateY(-7px) } }
+  .mouth-bub { display:none; }
+  .scene.running .mouth-bub { display:block; }
+  .mouth-bub circle { fill:none; stroke:#fff; stroke-opacity:.8; animation:rise2 2.2s linear infinite; }
+  @keyframes rise2 { from { transform:translateY(0) scale(.6); opacity:.9 } to { transform:translateY(-70px) scale(1.3); opacity:0 } }
+  .wedge { transition:filter .35s; filter:brightness(.9); }
+  .wedge.on { filter:brightness(1.35) saturate(1.1); }
+  .fauna use, .fauna .tail { stroke:rgba(0,0,0,.35); stroke-width:1; }
+  @media (prefers-reduced-motion: reduce) { .scene * { animation:none !important; } }
+
+  /* 컨트롤 */
+  .btns { display:grid; grid-template-columns:1fr 1.5fr 1fr; gap:12px; }
+  button { min-height:54px; padding:10px; font-size:16px; font-family:inherit; border-radius:18px; cursor:pointer;
+    background:var(--btn-bg); color:var(--btn-text); border:1px solid var(--btn-border);
+    transition:transform .1s, filter .15s, border-color .15s; }
+  button:hover:not(:disabled) { border-color:var(--accent); filter:brightness(1.12); }
+  button:active:not(:disabled) { transform:scale(.96); }
+  button:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  #start { background:var(--accent); color:var(--accent-text); border-color:transparent; font-weight:700; }
+  #start.running { background:var(--stop); color:var(--stop-text); }
+  kbd { font-size:10px; opacity:.65; border:1px solid currentColor; border-radius:4px; padding:0 4px; margin-left:6px; font-family:inherit; }
+  .panel { border:1px solid var(--card-border); border-radius:18px; padding:6px 12px; background:var(--panel); }
+  .head { display:flex; justify-content:space-between; align-items:center; padding:6px 0; font-size:13px; color:var(--muted); }
+  .head button { min-height:30px; padding:2px 12px; font-size:12px; border-radius:999px; }
+  ol { list-style:none; margin:0; padding:0; max-height:190px; overflow-y:auto; }
+  li { display:grid; grid-template-columns:2.4em 1fr 1fr; padding:9px 2px; border-top:1px solid var(--line);
+    font-variant-numeric:tabular-nums; font-size:14px; }
+  li { animation:slide .35s ease-out; }
+  @keyframes slide { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:none } }
+  li span:first-child { color:var(--muted); } li span:nth-child(n+2) { text-align:right; }
+  li.best span:nth-child(2) { color:#3ddc84; font-weight:700; } li.worst span:nth-child(2) { color:#ff6b6b; font-weight:700; }
+  .empty { text-align:center; color:var(--muted); font-size:13px; padding:10px 0 12px; }
+  .hint { text-align:center; font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="scene paused" id="scene">
+    <svg viewBox="0 0 400 540" role="img" aria-label="조개를 들고 있는 해녀">
+      <defs>
+        <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style="stop-color:var(--sea1)"/><stop offset=".55" style="stop-color:var(--sea2)"/><stop offset="1" style="stop-color:var(--sea3)"/>
+        </linearGradient>
+        <linearGradient id="ray" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" style="stop-color:var(--ray)"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="vig" cx="50%" cy="45%" r="75%">
+          <stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" style="stop-opacity:var(--vig,.38)"/>
+        </radialGradient>
+        <clipPath id="clip"><path id="body"
+          d="M200 330 L25 150 Q15 110 45 85 Q70 55 100 62 Q125 20 165 28 Q200 5 235 28 Q275 20 300 62 Q330 55 355 85 Q385 110 375 150 Z"/></clipPath>
+        <radialGradient id="shade" cx="200" cy="330" r="320" gradientUnits="userSpaceOnUse">
+          <stop offset=".15" stop-color="#000" stop-opacity=".55"/><stop offset=".55" stop-color="#000" stop-opacity=".12"/>
+          <stop offset="1" stop-color="#fff" stop-opacity=".16"/>
+        </radialGradient>
+        <path id="fish" d="M0 0 Q14 -11 30 0 Q14 11 0 0 Z"/>
+      </defs>
+
+      <rect width="400" height="540" fill="url(#sea)"/>
+      <g class="rays" fill="url(#ray)">
+        <polygon points="30,0 85,0 175,540 55,540"/><polygon points="165,0 215,0 335,540 235,540"/>
+        <polygon points="295,0 345,0 440,540 385,540"/>
+      </g>
+
+      <!-- 산호 -->
+      <g class="fauna">
+        <g style="fill:var(--coral1)"><path d="M0 540 L0 470 Q14 450 18 470 Q24 440 38 462 Q46 440 56 470 L70 540 Z"/>
+          <path d="M330 540 Q338 480 352 470 Q356 450 368 468 Q384 450 392 475 L400 480 L400 540 Z"/></g>
+        <g style="fill:var(--coral2)"><path d="M40 540 Q50 500 62 505 Q70 480 82 508 Q96 500 100 540 Z"/>
+          <path d="M300 540 Q306 505 318 508 Q326 488 336 512 Q346 506 350 540 Z"/></g>
+      </g>
+
+      <!-- 해초 -->
+      <g style="stroke:var(--weed)" stroke-width="8" stroke-linecap="round" fill="none">
+        <path class="weed" d="M18 540 Q2 490 22 450 Q38 415 20 380"/>
+        <path class="weed" style="animation-delay:-1.5s" d="M372 540 Q392 490 372 450 Q358 420 376 385"/>
+        <path class="weed" style="animation-delay:-3s" d="M100 540 Q112 505 98 480"/>
+      </g>
+
+      <!-- 물고기 / 해파리 -->
+      <g class="fauna">
+        <g class="swimR"><g transform="translate(0 120)"><use href="#fish" style="fill:var(--fish1)"/>
+          <path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish1)"/><circle cx="23" cy="-2" r="1.8" fill="#222"/></g></g>
+        <g class="swimR" style="animation-duration:23s;animation-delay:-9s"><g transform="translate(0 420) scale(.8)"><use href="#fish" style="fill:var(--fish2)"/>
+          <path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish2)"/><circle cx="23" cy="-2" r="1.8" fill="#222"/></g></g>
+        <g class="swimL" style="animation-delay:-14s"><g transform="translate(0 260) scale(-1 1)"><use href="#fish" style="fill:var(--fish2)"/>
+          <path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish2)"/><circle cx="23" cy="-2" r="1.8" fill="#222"/></g></g>
+        <g class="swimL" style="animation-duration:32s;animation-delay:-4s"><g transform="translate(0 70) scale(-.7 .7)"><use href="#fish" style="fill:var(--fish1)"/>
+          <path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish1)"/><circle cx="23" cy="-2" r="1.8" fill="#222"/></g></g>
+        <g class="swimR" style="animation-duration:15s;animation-delay:-6s"><g transform="translate(0 205) scale(.55)"><use href="#fish" style="fill:var(--fish2)"/>
+          <path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish2)"/><circle cx="23" cy="-2" r="1.8" fill="#222"/></g>
+          <g transform="translate(-26 214) scale(.45)"><use href="#fish" style="fill:var(--fish2)"/><path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish2)"/></g>
+          <g transform="translate(-48 198) scale(.5)"><use href="#fish" style="fill:var(--fish2)"/><path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish2)"/></g></g>
+        <g class="swimL" style="animation-duration:21s;animation-delay:-11s"><g transform="translate(0 355) scale(-.9 .9)"><use href="#fish" style="fill:var(--fish1)"/>
+          <path class="tail" d="M0 0 L-14 -9 L-14 9 Z" style="fill:var(--fish1)"/><circle cx="23" cy="-2" r="1.8" fill="#222"/></g></g>
+        <path d="M150 530 l5 -14 5 14 -13 -9 16 0z" style="fill:var(--coral2)" transform="translate(30 -8) scale(1.3)"/>
+        <g class="jelly" style="opacity:.85"><g transform="translate(345 190)">
+          <path d="M-20 0 Q-20 -26 0 -26 Q20 -26 20 0 Q10 5 0 0 Q-10 5 -20 0 Z" style="fill:var(--jelly)"/>
+          <g style="stroke:var(--jelly)" stroke-width="2.4" fill="none" stroke-linecap="round">
+            <path d="M-12 3 Q-16 16 -10 28"/><path d="M-4 4 Q0 18 -4 32"/><path d="M4 4 Q8 18 3 30"/><path d="M12 3 Q16 14 11 26"/></g></g></g>
+        <g class="jelly" style="opacity:.7;animation-delay:-3s;animation-duration:9s"><g transform="translate(55 250) scale(.7)">
+          <path d="M-20 0 Q-20 -26 0 -26 Q20 -26 20 0 Q10 5 0 0 Q-10 5 -20 0 Z" style="fill:var(--jelly)"/>
+          <g style="stroke:var(--jelly)" stroke-width="2.4" fill="none" stroke-linecap="round">
+            <path d="M-12 3 Q-16 16 -10 28"/><path d="M-4 4 Q0 18 -4 32"/><path d="M4 4 Q8 18 3 30"/><path d="M12 3 Q16 14 11 26"/></g></g></g>
+      </g>
+
+      <!-- 반짝이 -->
+      <g class="glit" fill="#fff6c4">
+        <path class="twinkle" d="M60 90 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3z"/>
+        <path class="twinkle" style="animation-delay:-.8s" d="M330 100 l3 9 9 3 -9 3 -3 9 -3 -9 -9 -3 9 -3z"/>
+        <path class="twinkle" style="animation-delay:-1.6s" d="M300 330 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2z"/>
+        <path class="twinkle" style="animation-delay:-.4s" d="M95 360 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2z"/>
+        <path class="twinkle" style="animation-delay:-2s" d="M265 60 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2z"/>
+      </g>
+
+      <!-- 물방울 -->
+      <g>
+        <circle class="bubble" cx="110" cy="540" r="5" style="animation-delay:0s"/>
+        <circle class="bubble" cx="300" cy="545" r="7" style="animation-delay:1.8s"/>
+        <circle class="bubble" cx="250" cy="540" r="4" style="animation-delay:3.4s"/>
+        <circle class="bubble" cx="160" cy="548" r="6" style="animation-delay:4.8s"/>
+        <circle class="bubble" cx="50" cy="545" r="4" style="animation-delay:2.6s"/>
+      </g>
+
+      <!-- 해녀 -->
+      <g class="diver">
+        <path d="M138 255 Q142 183 200 176 Q258 183 262 255 L272 310 L128 310 Z" style="fill:var(--suit);stroke:var(--suit-rim)" stroke-width="2"/>
+        <path d="M176 182 Q200 200 224 182" fill="none" style="stroke:var(--suit-rim)" stroke-width="2" opacity=".7"/>
+        <g style="stroke:var(--suit);" stroke-width="27" stroke-linecap="round" fill="none">
+          <path d="M148 206 Q94 240 82 322"/><path d="M252 206 Q306 240 318 322"/></g>
+        <g style="stroke:var(--suit-rim)" stroke-width="2" stroke-linecap="round" fill="none" opacity=".55">
+          <path d="M138 198 Q88 234 71 318"/><path d="M262 198 Q312 234 329 318"/></g>
+        <rect x="188" y="150" width="24" height="36" rx="10" fill="#e3ad88"/>
+        <circle cx="200" cy="118" r="37" fill="#f2c6a3"/>
+        <!-- 흰 두건 -->
+        <path d="M161 114 Q163 68 200 63 Q238 68 239 114 Q220 97 200 97 Q180 97 161 114 Z" style="fill:var(--scarf)"/>
+        <path d="M168 92 Q200 78 233 92" stroke="#000" stroke-opacity=".12" stroke-width="2" fill="none"/>
+        <path d="M236 100 Q262 104 266 128 Q250 118 238 116 Z" style="fill:var(--scarf)"/>
+        <!-- 물안경 -->
+        <rect x="170" y="93" width="60" height="18" rx="9" fill="#0d3347" stroke="#e8a24a" stroke-width="4"/>
+        <rect x="175" y="96" width="23" height="12" rx="6" fill="#8fe0ff" opacity=".9"/>
+        <rect x="202" y="96" width="23" height="12" rx="6" fill="#8fe0ff" opacity=".9"/>
+        <path d="M178 99 l8 -2" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".8"/>
+        <!-- 얼굴 -->
+        <g class="blink"><circle cx="186" cy="129" r="2.8" fill="#2b1a12"/><circle cx="214" cy="129" r="2.8" fill="#2b1a12"/></g>
+        <path d="M189 142 Q200 152 211 142" stroke="#a5503f" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="176" cy="139" r="5.5" fill="#f0968a" opacity=".5"/><circle cx="224" cy="139" r="5.5" fill="#f0968a" opacity=".5"/>
+        <g class="mouth-bub"><circle cx="205" cy="150" r="4" style="animation-delay:0s"/><circle cx="196" cy="152" r="3" style="animation-delay:.7s"/><circle cx="208" cy="150" r="5" style="animation-delay:1.4s"/></g>
+      </g>
+
+      <!-- 조개 -->
+      <g transform="translate(50 215) scale(.75)">
+        <g clip-path="url(#clip)">
+          <rect width="400" height="360" fill="#1a1024"/>
+          <g id="wedges"></g>
+          <rect width="400" height="360" fill="url(#shade)"/>
+          <g id="arcs" stroke="rgba(0,0,0,.22)" stroke-width="2" fill="none"></g>
+          <g id="ribs" stroke="rgba(0,0,0,.35)" stroke-width="1.6" fill="none"></g>
+          <ellipse cx="135" cy="120" rx="70" ry="26" transform="rotate(-38 135 120)" fill="#fff" opacity=".16"/>
+        </g>
+        <use href="#body" fill="none" style="stroke:var(--rim)" stroke-width="3.5"/>
+        <path d="M165 330 Q200 350 235 330 L225 308 Q200 318 175 308 Z" fill="#241a2c" style="stroke:var(--rim)" stroke-width="2.5"/>
+      </g>
+
+      <!-- 손 -->
+      <circle cx="80" cy="326" r="15" fill="#f2c6a3"/><circle cx="320" cy="326" r="15" fill="#f2c6a3"/>
+      <g stroke="#d9a47f" stroke-width="2" stroke-linecap="round">
+        <path d="M86 318 L96 322"/><path d="M87 326 L98 327"/><path d="M86 334 L96 332"/>
+        <path d="M314 318 L304 322"/><path d="M313 326 L302 327"/><path d="M314 334 L304 332"/>
+      </g>
+      <rect width="400" height="540" fill="url(#vig)" pointer-events="none"/>
+    </svg>
+    <div class="badge" id="state">준비</div>
+    <div class="time" id="display" role="timer" aria-live="off">00:00:00<small>.00</small></div>
+  </div>
+
+  <div class="btns">
+    <button id="lap" disabled aria-keyshortcuts="L">랩<kbd>L</kbd></button>
+    <button id="start" aria-keyshortcuts="Space"><span id="startLabel">시작</span><kbd>Space</kbd></button>
+    <button id="reset" disabled aria-keyshortcuts="R">초기화<kbd>R</kbd></button>
+  </div>
+
+  <div class="panel">
+    <div class="head"><span id="summary">구간 기록</span><button id="copy" disabled>복사</button></div>
+    <ol id="laps" aria-label="랩 기록"></ol>
+    <div class="empty" id="empty">달리는 중 ‘랩’을 눌러 구간을 기록하세요</div>
+  </div>
+  <div class="hint">스페이스 시작/정지 · L 랩 · R 초기화 · 새로고침해도 기록이 유지됩니다</div>
+</div>
+
+<script>
+  const CFG = {name:"gold",title:"골드",hue0:0,hue:290,sat:84,light:58};
+  const NS='http://www.w3.org/2000/svg', N=14, SPAN=66*Math.PI/180, L=420;
+  const wedgesEl=document.getElementById('wedges'), ribsEl=document.getElementById('ribs');
+  const pt=i=>{const a=(i/N-.5)*2*SPAN;return `${(200+Math.sin(a)*L).toFixed(1)} ${(330-Math.cos(a)*L).toFixed(1)}`};
+  const wedgeNodes=[];
+  for(let i=0;i<N;i++){
+    const w=document.createElementNS(NS,'path');
+    w.setAttribute('d',`M200 330 L${pt(i)} L${pt(i+1)} Z`);
+    w.setAttribute('class','wedge');
+    const h=(CFG.hue0+i/(N-1)*CFG.hue)%360;
+    w.setAttribute('fill',`hsl(${h.toFixed(0)} ${CFG.sat}% ${CFG.light}%)`);
+    wedgesEl.appendChild(w); wedgeNodes.push(w);
+  }
+  [90,150,210,270].forEach(r=>{ // 조개 성장선
+    const a=SPAN, p=document.createElementNS(NS,'path');
+    p.setAttribute('d',`M${(200-Math.sin(a)*r).toFixed(1)} ${(330-Math.cos(a)*r).toFixed(1)} A${r} ${r} 0 0 1 ${(200+Math.sin(a)*r).toFixed(1)} ${(330-Math.cos(a)*r).toFixed(1)}`);
+    document.getElementById('arcs').appendChild(p);
+  });
+  for(let i=0;i<=N;i++){const p=document.createElementNS(NS,'path');p.setAttribute('d',`M200 330 L${pt(i)}`);ribsEl.appendChild(p);}
+
+  const $=id=>document.getElementById(id);
+  const scene=$('scene'),display=$('display'),state=$('state'),startBtn=$('start'),startLabel=$('startLabel'),
+        lapBtn=$('lap'),resetBtn=$('reset'),copyBtn=$('copy'),lapsEl=$('laps'),emptyEl=$('empty'),summary=$('summary');
+  const KEY='haenyeo-stopwatch-'+CFG.name;
+  let s={running:false,base:0,since:0,laps:[]},raf=null,lastIdx=-1;
+  try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&Array.isArray(v.laps))s=v}catch(e){}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
+  const pad=(n,l=2)=>String(n).padStart(l,'0');
+  const txt=ms=>`${pad(Math.floor(ms/3600000))}:${pad(Math.floor(ms/60000)%60)}:${pad(Math.floor(ms/1000)%60)}.${pad(Math.floor(ms/10)%100)}`;
+  const now=()=>s.base+(s.running?Date.now()-s.since:0);
+  function tick(){
+    const t=now();
+    display.innerHTML=txt(t).replace(/\.(\d\d)$/,'<small>.$1</small>');
+    document.title=(s.running?'▶ ':'')+txt(t).slice(0,8)+' · '+CFG.title;
+    const idx=s.running||t>0?Math.floor(t/1000)%N:-1;
+    if(idx!==lastIdx){wedgeNodes.forEach((w,i)=>w.classList.toggle('on',i===idx));lastIdx=idx;}
+    if(s.running)raf=requestAnimationFrame(tick);
+  }
+  function drawLaps(){
+    const sp=s.laps.map((t,i)=>t-(s.laps[i-1]||0));
+    const min=Math.min(...sp),max=Math.max(...sp);
+    lapsEl.innerHTML=s.laps.map((t,i)=>{
+      const c=s.laps.length>2?(sp[i]===min?'best':sp[i]===max?'worst':''):'';
+      return `<li class="${c}"><span>${i+1}</span><span>${txt(sp[i])}</span><span>${txt(t)}</span></li>`}).reverse().join('');
+    emptyEl.style.display=s.laps.length?'none':'block';
+    summary.textContent=s.laps.length?`${s.laps.length}구간 · 평균 ${txt(s.laps[s.laps.length-1]/s.laps.length).slice(3)}`:'구간 기록';
+    copyBtn.disabled=!s.laps.length;
+  }
+  function ui(){
+    const t=now();
+    startLabel.textContent=s.running?'정지':(t>0?'계속':'시작');
+    startBtn.classList.toggle('running',s.running);
+    state.textContent=s.running?'측정 중':(t>0?'일시정지':'준비');
+    scene.classList.toggle('running',s.running);scene.classList.toggle('paused',!s.running);
+    lapBtn.disabled=!s.running;resetBtn.disabled=s.running||t===0;
+    cancelAnimationFrame(raf);lastIdx=-2;tick();drawLaps();save();
+  }
+  function toggle(){if(s.running){s.base=now();s.running=false}else{s.since=Date.now();s.running=true}ui()}
+  function lap(){if(s.running){s.laps.push(now());ui()}}
+  function reset(){if(!s.running){s={running:false,base:0,since:0,laps:[]};ui()}}
+  copyBtn.onclick=async()=>{
+    const sp=s.laps.map((t,i)=>t-(s.laps[i-1]||0));
+    const out=s.laps.map((t,i)=>`${i+1}\t${txt(sp[i])}\t${txt(t)}`).join('\n');
+    try{await navigator.clipboard.writeText(out);copyBtn.textContent='복사됨 ✓'}catch(e){copyBtn.textContent='실패'}
+    setTimeout(()=>copyBtn.textContent='복사',1500);
+  };
+  startBtn.onclick=toggle;lapBtn.onclick=lap;resetBtn.onclick=reset;
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='BUTTON'&&(e.code==='Space'||e.code==='Enter'))return;
+    if(e.code==='Space'){e.preventDefault();toggle()}
+    else if(e.key.toLowerCase()==='l')lap(); else if(e.key.toLowerCase()==='r')reset();
+  });
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)ui()});
+  ui();
+</script>
+</body>
+</html>
